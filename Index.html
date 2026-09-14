@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Estilos'); ?>
+</head>
+<body>
+
+<div class="envoltura">
+
+  <!-- ============ PASO 1: TABLERO ============ -->
+  <section id="paso-tablero">
+    <div class="talon">
+      <div class="talon-cuerpo">
+        <p class="rifa-titulo" id="rifaNombre">Cargando</p>
+        <p class="rifa-premio" id="rifaPremio">S/ —</p>
+        <p class="rifa-sub">Elige tu número, paga con Yape y recibe tu ticket.</p>
+        <div class="progreso"><span id="barraProgreso" style="width:0%"></span></div>
+        <p class="dato"><b id="statPagados">0</b> vendidos · <b id="statDisponibles">0</b> libres</p>
+      </div>
+      <div class="talon-corte">
+        <span class="dato">Cada número cuesta <b id="rifaPrecio">S/ —</b></span>
+        <span class="dato">Sorteo <b id="rifaFecha">—</b></span>
+      </div>
+    </div>
+
+    <div id="avisoCerrada" class="aviso aviso-mal oculto"></div>
+
+    <div id="avisoReserva" class="aviso oculto">
+      <div id="avisoReservaTexto"></div>
+      <button class="btn btn-chico btn-ancho" style="margin-top:11px" onclick="volverAlPago()">
+        Volver al pago
+      </button>
+    </div>
+
+    <button class="btn btn-fantasma btn-ancho btn-chico" onclick="irAMisCompras()">
+      Ya compré, ver mis números
+    </button>
+
+    <div class="leyenda">
+      <span><i class="i-d"></i>libre</span>
+      <span><i class="i-r"></i>reservado</span>
+      <span><i class="i-p"></i>vendido</span>
+    </div>
+
+    <div id="tablero" class="tablero"><div class="cargando">Cargando el tablero…</div></div>
+  </section>
+
+  <!-- ============ PASO 2: DATOS ============ -->
+  <section id="paso-datos" class="oculto">
+    <div class="talon">
+      <div class="talon-cuerpo">
+        <p class="rifa-titulo">Tus números</p>
+        <div class="numeritos" id="resumenNumeros"></div>
+      </div>
+      <div class="talon-corte">
+        <span class="dato">Total a pagar</span>
+        <span class="cuadro-monto" id="resumenTotal">S/ 0</span>
+      </div>
+    </div>
+
+    <label for="fNombre">Nombre y apellido</label>
+    <input id="fNombre" type="text" autocomplete="name" placeholder="Juan Pérez">
+
+    <label for="fCelular">Celular</label>
+    <input id="fCelular" type="tel" inputmode="numeric" maxlength="9" autocomplete="tel" placeholder="987654321">
+
+    <label for="fEmail">Correo (opcional, para recibir el ticket)</label>
+    <input id="fEmail" type="email" inputmode="email" autocomplete="email" placeholder="juan@correo.com">
+
+    <div id="errorDatos" class="aviso aviso-mal oculto"></div>
+    <p class="mini">Con tu celular puedes recuperar tus números y tu ticket en cualquier momento.</p>
+  </section>
+
+  <!-- ============ PASO 3: PAGO ============ -->
+  <section id="paso-pago" class="oculto">
+    <div class="aviso">
+      Tus números están reservados <span class="reloj" id="reloj">00:00</span>. Paga y manda tu comprobante antes de que se venza.
+    </div>
+
+    <div class="numeritos" id="pagoNumeros"></div>
+
+    <p class="mini">Sorteo: <b id="sorteoPago">—</b></p>
+
+    <div class="tarjeta">
+      <div class="fila">
+        <div>
+          <div class="mini">Comprando como</div>
+          <div id="pagoDatosNombre" style="font-weight:600">—</div>
+          <div class="mini" id="pagoDatosContacto">—</div>
+        </div>
+        <button class="btn btn-chico btn-fantasma" onclick="editarDatos()">Editar</button>
+      </div>
+    </div>
+
+    <div class="cuadro">
+      <p class="mini">Monto exacto</p>
+      <p class="cuadro-monto" id="pagoMonto">S/ 0</p>
+      <div class="copiable">
+        <span id="yapeCelular">—</span>
+        <button class="btn btn-chico btn-fantasma" onclick="copiar(document.getElementById('yapeCelular').textContent)">Copiar</button>
+      </div>
+      <p class="mini" style="margin-top:8px">Verifica que aparezca <b id="yapeNombre">—</b></p>
+    </div>
+
+    <ol class="pasos">
+      <li>Abre Yape y envía el monto exacto al número de arriba.</li>
+      <li>Copia el código de operación que te muestra Yape.</li>
+      <li>Pégalo acá abajo y sube la captura.</li>
+      <li>Confirmamos tu pago y te llega tu ticket.</li>
+    </ol>
+
+    <label for="fCodOp">Código de operación</label>
+    <input id="fCodOp" type="text" inputmode="numeric" placeholder="Ej. 09873421">
+
+    <label for="fFoto">Captura del Yape</label>
+    <input id="fFoto" type="file" accept="image/*">
+    <p class="mini" id="estadoFoto">Puedes elegirla de tu galería o tomarle foto.</p>
+    <img id="previaFoto" class="captura oculto" alt="Vista previa de tu captura">
+
+    <div id="errorPago" class="aviso aviso-mal oculto"></div>
+  </section>
+
+  <!-- ============ PASO 4: EN REVISIÓN ============ -->
+  <section id="paso-listo" class="oculto">
+    <div class="talon">
+      <div class="talon-cuerpo">
+        <p class="rifa-titulo">Comprobante recibido</p>
+        <p class="rifa-sub">Estamos revisando tu pago. Cuando lo confirmemos te llega tu ticket por WhatsApp o correo.</p>
+        <div class="numeritos" id="listoNumeros"></div>
+      </div>
+      <div class="talon-corte">
+        <span class="dato">Sorteo</span>
+        <span class="dato"><b id="sorteoListo">—</b></span>
+      </div>
+    </div>
+    <div class="hueco"></div>
+    <button class="btn btn-ancho" onclick="irAMisCompras()">Ver el estado de mi compra</button>
+    <div class="hueco"></div>
+    <button class="btn btn-fantasma btn-ancho" onclick="comprarMas()">Comprar más números</button>
+  </section>
+
+  <!-- ============ PASO 5: MIS COMPRAS ============ -->
+  <section id="paso-compras" class="oculto">
+    <div class="talon">
+      <div class="talon-cuerpo">
+        <p class="rifa-titulo">Mis números</p>
+        <p class="rifa-sub">Escribe el celular con el que compraste.</p>
+        <label for="fBuscarCel">Celular</label>
+        <input id="fBuscarCel" type="tel" inputmode="numeric" maxlength="9" placeholder="987654321">
+        <div class="hueco"></div>
+        <button class="btn btn-ancho" onclick="buscarCompras()">Buscar mis compras</button>
+      </div>
+    </div>
+    <div id="errorCompras" class="aviso aviso-mal oculto"></div>
+    <div id="listaCompras"></div>
+    <div class="hueco"></div>
+    <button class="btn btn-fantasma btn-ancho" onclick="volverAlTablero()">Volver al tablero</button>
+  </section>
+
+</div>
+
+<!-- ============ BARRA FIJA ============ -->
+<div class="barra" id="barra">
+  <div class="barra-fila">
+    <div class="barra-info">
+      <div class="barra-titulo" id="barraTitulo">Elige tus números</div>
+      <div class="barra-sub" id="barraSub">Toca los que quieras llevar</div>
+    </div>
+    <button class="btn btn-fantasma" id="barraAtras" onclick="atras()" style="display:none">Atrás</button>
+    <button class="btn" id="barraBtn" disabled onclick="avanzar()">Continuar</button>
+  </div>
+</div>
+
+<script>
+var ST = {
+  paso: 1,
+  cfg: null,
+  numeros: [],
+  sel: [],
+  orden: null,        // reserva viva; sobrevive al botón Atrás
+  modo: 'nuevo',      // 'nuevo' = comprando | 'editar' = corrigiendo datos
+  foto: null,
+  cuenta: null,
+  refresco: null,
+  ocupado: false
+};
+
+// ---------------- Arranque ----------------
+document.addEventListener('DOMContentLoaded', function(){
+  var cel = recordado('cel');
+  if (cel){
+    document.getElementById('fCelular').value = cel;
+    document.getElementById('fBuscarCel').value = cel;
+  }
+  cargar();
+});
+
+function cargar(){
+  google.script.run.withSuccessHandler(pintarEstado).withFailureHandler(fallo).apiEstado();
+}
+
+function pintarEstado(d){
+  ST.cfg = d.cfg;
+  ST.numeros = d.numeros;
+
+  document.getElementById('rifaNombre').textContent = d.cfg.nombre;
+  document.getElementById('rifaPremio').textContent = 'S/ ' + d.cfg.premio;
+  document.getElementById('rifaPrecio').textContent = 'S/ ' + d.cfg.precio;
+  document.getElementById('rifaFecha').textContent = d.cfg.fechaSorteo || 'por anunciar';
+  document.getElementById('sorteoPago').textContent = d.cfg.fechaSorteo || 'por anunciar';
+  document.getElementById('sorteoListo').textContent = d.cfg.fechaSorteo || 'por anunciar';
+  document.getElementById('yapeCelular').textContent = d.cfg.yapeCelular;
+  document.getElementById('yapeNombre').textContent = d.cfg.yapeNombre;
+
+  if (!d.cfg.abiertas){
+    var a = document.getElementById('avisoCerrada');
+    a.textContent = d.cfg.mensajeCierre;
+    a.classList.remove('oculto');
+  }
+
+  pintarContadores(d);
+  pintarTablero();
+  actualizarBarra();
+  if (!ST.refresco) ST.refresco = setInterval(refrescar, 25000);
+}
+
+function pintarContadores(d){
+  document.getElementById('statPagados').textContent = d.pagados;
+  document.getElementById('statDisponibles').textContent = d.disponibles;
+  document.getElementById('barraProgreso').style.width =
+    Math.round(d.pagados / d.numeros.length * 100) + '%';
+}
+
+function refrescar(){
+  if (ST.paso !== 1 || ST.ocupado) return;
+  google.script.run.withSuccessHandler(function(d){
+    ST.numeros = d.numeros;
+    pintarContadores(d);
+    ST.sel = ST.sel.filter(function(n){
+      var x = buscarNumero(n);
+      return x && x.e === 'D';
+    });
+    pintarTablero();
+    actualizarBarra();
+  }).apiEstado();
+}
+
+function refrescarSuave(){
+  google.script.run.withSuccessHandler(function(d){
+    ST.numeros = d.numeros;
+    pintarContadores(d);
+    pintarTablero();
+    actualizarBarra();
+  }).apiEstado();
+}
+
+function buscarNumero(n){
+  for (var i = 0; i < ST.numeros.length; i++) if (ST.numeros[i].n === n) return ST.numeros[i];
+  return null;
+}
+
+function pintarTablero(){
+  var cont = document.getElementById('tablero');
+  var frag = document.createDocumentFragment();
+  var mios = ST.orden ? ST.orden.numeros : [];
+  var congelado = !!ST.orden;
+
+  cont.innerHTML = '';
+
+  ST.numeros.forEach(function(o){
+    var b = document.createElement('button');
+    b.className = 'num ' + o.e.toLowerCase();
+    b.textContent = o.n;
+    b.type = 'button';
+
+    if (mios.indexOf(o.n) !== -1 || ST.sel.indexOf(o.n) !== -1) b.className += ' sel';
+
+    if (o.e === 'D' && ST.cfg.abiertas && !congelado){
+      b.onclick = function(){ alternar(o.n); };
+      b.setAttribute('aria-label', 'Número ' + o.n + ', libre');
+    } else {
+      b.disabled = true;
+      b.setAttribute('aria-label', 'Número ' + o.n + ', no disponible');
+    }
+    frag.appendChild(b);
+  });
+  cont.appendChild(frag);
+}
+
+function alternar(n){
+  var i = ST.sel.indexOf(n);
+  if (i !== -1) ST.sel.splice(i, 1);
+  else {
+    if (ST.sel.length >= ST.cfg.maxPorOrden){
+      alert('Puedes llevar hasta ' + ST.cfg.maxPorOrden + ' números por compra.');
+      return;
+    }
+    ST.sel.push(n);
+  }
+  ST.sel.sort();
+  pintarTablero();
+  actualizarBarra();
+}
+
+// ---------------- Banner de reserva activa ----------------
+function pintarAvisoReserva(){
+  var caja = document.getElementById('avisoReserva');
+  if (!ST.orden || ST.paso !== 1){ caja.classList.add('oculto'); return; }
+  document.getElementById('avisoReservaTexto').innerHTML =
+    'Tienes una reserva sin pagar: <b>' + ST.orden.numeros.join(', ') + '</b> por <b>S/ ' +
+    ST.orden.total + '</b>. Vence en <span class="reloj" id="relojBanner">' + textoReloj() + '</span>.';
+  caja.classList.remove('oculto');
+}
+
+function volverAlPago(){ verPaso(3); }
+function volverAlTablero(){ verPaso(1); refrescarSuave(); }
+
+// ---------------- Barra inferior ----------------
+function actualizarBarra(){
+  var t = document.getElementById('barraTitulo');
+  var s = document.getElementById('barraSub');
+  var b = document.getElementById('barraBtn');
+  var a = document.getElementById('barraAtras');
+  var barra = document.getElementById('barra');
+
+  var ocultarBarra = ST.paso === 4 || ST.paso === 5 ||
+                     (ST.paso === 1 && ST.cfg && !ST.cfg.abiertas && !ST.orden);
+  barra.classList.toggle('oculto', ocultarBarra);
+  a.style.display = (ST.paso === 2 || ST.paso === 3) ? '' : 'none';
+  pintarAvisoReserva();
+  if (ocultarBarra) return;
+
+  if (ST.paso === 1){
+    if (ST.orden){
+      t.textContent = 'Reserva pendiente · S/ ' + ST.orden.total;
+      s.textContent = 'Vence en ' + textoReloj();
+      b.textContent = 'Ir a pagar';
+      b.disabled = false;
+    } else if (ST.sel.length){
+      t.textContent = ST.sel.length + ' número' + (ST.sel.length > 1 ? 's' : '') +
+                      ' · S/ ' + (ST.sel.length * ST.cfg.precio);
+      s.textContent = ST.sel.join(', ');
+      b.textContent = 'Continuar';
+      b.disabled = false;
+    } else {
+      t.textContent = 'Elige tus números';
+      s.textContent = 'Toca los que quieras llevar';
+      b.textContent = 'Continuar';
+      b.disabled = true;
+    }
+  } else if (ST.paso === 2){
+    if (ST.modo === 'editar'){
+      t.textContent = 'Editar tus datos';
+      s.textContent = ST.orden.numeros.join(', ') + ' · S/ ' + ST.orden.total;
+      b.textContent = 'Guardar cambios';
+    } else {
+      t.textContent = 'Tus datos';
+      s.textContent = ST.sel.length + ' número(s) · S/ ' + (ST.sel.length * ST.cfg.precio);
+      b.textContent = 'Reservar y pagar';
+    }
+    b.disabled = false;
+  } else if (ST.paso === 3){
+    t.textContent = 'Paga S/ ' + ST.orden.total;
+    s.textContent = ST.orden.numeros.join(', ');
+    b.textContent = 'Enviar comprobante';
+    b.disabled = false;
+  }
+}
+
+function verPaso(n){
+  ST.paso = n;
+  ['paso-tablero','paso-datos','paso-pago','paso-listo','paso-compras']
+    .forEach(function(id, i){
+      document.getElementById(id).classList.toggle('oculto', i + 1 !== n);
+    });
+  window.scrollTo(0, 0);
+  actualizarBarra();
+}
+
+// Atrás nunca recarga la página: eso borraba la reserva y dejaba al comprador atrapado.
+function atras(){
+  if (ST.paso === 2){
+    if (ST.modo === 'editar'){ ST.modo = 'nuevo'; verPaso(3); }
+    else verPaso(1);
+  }
+  else if (ST.paso === 3) verPaso(1);
+}
+
+function avanzar(){
+  if (ST.paso === 1){
+    if (ST.orden) volverAlPago();
+    else irADatos();
+  }
+  else if (ST.paso === 2){
+    if (ST.modo === 'editar') guardarDatos();
+    else reservar();
+  }
+  else if (ST.paso === 3) enviarComprobante();
+}
+
+// ---------------- Paso 2: datos ----------------
+function irADatos(){
+  ST.modo = 'nuevo';
+  pintarChips('resumenNumeros', ST.sel);
+  document.getElementById('resumenTotal').textContent = 'S/ ' + (ST.sel.length * ST.cfg.precio);
+  verPaso(2);
+}
+
+function editarDatos(){
+  if (!ST.orden) return;
+  ST.modo = 'editar';
+  document.getElementById('fNombre').value = ST.orden.datos.nombre;
+  document.getElementById('fCelular').value = ST.orden.datos.celular;
+  document.getElementById('fEmail').value = ST.orden.datos.email;
+  document.getElementById('errorDatos').classList.add('oculto');
+  pintarChips('resumenNumeros', ST.orden.numeros);
+  document.getElementById('resumenTotal').textContent = 'S/ ' + ST.orden.total;
+  verPaso(2);
+}
+
+function leerFormulario(){
+  var nombre = document.getElementById('fNombre').value.trim();
+  var celular = document.getElementById('fCelular').value.replace(/\D/g, '');
+  var email = document.getElementById('fEmail').value.trim();
+  var err = document.getElementById('errorDatos');
+
+  if (nombre.length < 3){ mostrarError(err, 'Escribe tu nombre y apellido.'); return null; }
+  if (!/^9\d{8}$/.test(celular)){ mostrarError(err, 'El celular debe tener 9 dígitos y empezar con 9.'); return null; }
+  err.classList.add('oculto');
+  return { nombre: nombre, celular: celular, email: email };
+}
+
+function reservar(){
+  var d = leerFormulario();
+  if (!d) return;
+
+  bloquear(true, 'Reservando…');
+  google.script.run
+    .withSuccessHandler(function(o){
+      bloquear(false);
+      o.datos = { nombre: d.nombre, celular: d.celular, email: d.email };
+      ST.orden = o;
+      ST.sel = [];
+      recordar('cel', d.celular);
+      document.getElementById('fBuscarCel').value = d.celular;
+      document.getElementById('pagoMonto').textContent = 'S/ ' + o.total;
+      document.getElementById('yapeCelular').textContent = o.yape.celular;
+      document.getElementById('yapeNombre').textContent = o.yape.nombre;
+      pintarChips('pagoNumeros', o.numeros);
+      pintarDatosPago();
+      iniciarReloj();
+      pintarTablero();
+      verPaso(3);
+    })
+    .withFailureHandler(function(e){
+      bloquear(false);
+      mostrarError(document.getElementById('errorDatos'), e.message);
+      refrescar();
+    })
+    .apiReservar({ nombre:d.nombre, celular:d.celular, email:d.email, numeros:ST.sel });
+}
+
+function guardarDatos(){
+  var d = leerFormulario();
+  if (!d) return;
+
+  bloquear(true, 'Guardando…');
+  google.script.run
+    .withSuccessHandler(function(r){
+      bloquear(false);
+      ST.orden.datos = { nombre: r.nombre, celular: r.celular, email: r.email };
+      recordar('cel', r.celular);
+      document.getElementById('fBuscarCel').value = r.celular;
+      pintarDatosPago();
+      ST.modo = 'nuevo';
+      verPaso(3);
+    })
+    .withFailureHandler(function(e){
+      bloquear(false);
+      mostrarError(document.getElementById('errorDatos'), e.message);
+    })
+    .apiActualizarDatos({
+      ordenId: ST.orden.ordenId, nombre: d.nombre, celular: d.celular, email: d.email
+    });
+}
+
+function pintarDatosPago(){
+  if (!ST.orden) return;
+  document.getElementById('pagoDatosNombre').textContent = ST.orden.datos.nombre;
+  document.getElementById('pagoDatosContacto').textContent =
+    ST.orden.datos.celular + (ST.orden.datos.email ? ' · ' + ST.orden.datos.email : '');
+}
+
+// ---------------- Paso 3: comprobante ----------------
+document.addEventListener('change', function(ev){
+  if (ev.target.id !== 'fFoto') return;
+  var f = ev.target.files[0];
+  var est = document.getElementById('estadoFoto');
+  var previa = document.getElementById('previaFoto');
+
+  if (!f){
+    ST.foto = null;
+    est.textContent = 'Puedes elegirla de tu galería o tomarle foto.';
+    previa.classList.add('oculto');
+    return;
+  }
+
+  est.textContent = 'Preparando la imagen…';
+  previa.classList.add('oculto');
+
+  comprimir(f, function(dataUrl){
+    ST.foto = dataUrl;
+    est.textContent = 'Imagen lista.';
+    previa.src = dataUrl;
+    previa.classList.remove('oculto');
+  }, function(){
+    ST.foto = null;
+    est.textContent = 'No pudimos leer esa imagen. Prueba con otra.';
+    previa.classList.add('oculto');
+  });
+});
+
+// El celular manda fotos de 4 MB y no hace falta tanto.
+function comprimir(file, ok, mal){
+  var fr = new FileReader();
+  fr.onerror = mal;
+  fr.onload = function(){
+    var img = new Image();
+    img.onerror = mal;
+    img.onload = function(){
+      var max = 1100;
+      var esc = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(img.width * esc);
+      c.height = Math.round(img.height * esc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      ok(c.toDataURL('image/jpeg', 0.78));
+    };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
+
+function enviarComprobante(){
+  var codOp = document.getElementById('fCodOp').value.trim();
+  var err = document.getElementById('errorPago');
+
+  if (!codOp && !ST.foto) return mostrarError(err, 'Pega el código de operación o sube la captura del Yape.');
+  err.classList.add('oculto');
+
+  var archivo = ST.foto ? { b64: ST.foto.split(',')[1], mime: 'image/jpeg', nombre: 'yape.jpg' } : null;
+  var orden = ST.orden;
+
+  bloquear(true, 'Enviando…');
+  ST.ocupado = true;
+  google.script.run
+    .withSuccessHandler(function(){
+      bloquear(false);
+      ST.ocupado = false;
+      if (ST.cuenta){ clearInterval(ST.cuenta); ST.cuenta = null; }
+      pintarChips('listoNumeros', orden.numeros);
+      ST.orden = null;
+      limpiarComprobante();
+      verPaso(4);
+      refrescarSuave();
+    })
+    .withFailureHandler(function(e){
+      bloquear(false);
+      ST.ocupado = false;
+      mostrarError(err, e.message);
+    })
+    .apiEnviarComprobante({ ordenId: orden.ordenId, codOp: codOp, archivo: archivo });
+}
+
+function limpiarComprobante(){
+  ST.foto = null;
+  document.getElementById('fCodOp').value = '';
+  document.getElementById('fFoto').value = '';
+  document.getElementById('estadoFoto').textContent = 'Puedes elegirla de tu galería o tomarle foto.';
+  var previa = document.getElementById('previaFoto');
+  previa.classList.add('oculto');
+  previa.removeAttribute('src');
+  document.getElementById('errorPago').classList.add('oculto');
+}
+
+function comprarMas(){
+  ST.sel = [];
+  ST.orden = null;
+  ST.modo = 'nuevo';
+  limpiarComprobante();
+  document.getElementById('errorDatos').classList.add('oculto');
+  verPaso(1);
+  refrescarSuave();
+}
+
+// ---------------- Paso 5: mis compras ----------------
+function irAMisCompras(){
+  var cel = recordado('cel');
+  if (cel) document.getElementById('fBuscarCel').value = cel;
+  document.getElementById('errorCompras').classList.add('oculto');
+  verPaso(5);
+  if (document.getElementById('fBuscarCel').value.length === 9) buscarCompras();
+}
+
+function buscarCompras(){
+  var cel = document.getElementById('fBuscarCel').value.replace(/\D/g, '');
+  var err = document.getElementById('errorCompras');
+  var caja = document.getElementById('listaCompras');
+
+  if (!/^9\d{8}$/.test(cel)) return mostrarError(err, 'El celular debe tener 9 dígitos y empezar con 9.');
+  err.classList.add('oculto');
+  caja.innerHTML = '<div class="cargando">Buscando…</div>';
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      recordar('cel', cel);
+      if (!r.compras.length){
+        caja.innerHTML = '<div class="vacio">No encontramos compras con ese celular. ' +
+          'Revisa que sea el mismo que usaste al comprar.</div>';
+        return;
+      }
+      caja.innerHTML = '';
+      r.compras.forEach(function(c){ caja.appendChild(tarjetaCompra(c)); });
+    })
+    .withFailureHandler(function(e){
+      caja.innerHTML = '';
+      mostrarError(err, e.message);
+    })
+    .apiMisCompras(cel);
+}
+
+function tarjetaCompra(c){
+  var t = document.createElement('div');
+  t.className = 'tarjeta';
+
+  var estados = {
+    PAGADA:      { clase:'chip-ok',     texto:'confirmada' },
+    POR_VALIDAR: { clase:'chip-espera', texto:'en revisión' },
+    RESERVADA:   { clase:'chip-espera', texto:'sin pagar' },
+    RECHAZADA:   { clase:'chip-mal',    texto:'rechazada' }
+  };
+  var e = estados[c.estado] || { clase:'', texto: c.estado.toLowerCase() };
+
+  var html =
+    '<div class="fila"><b>S/ ' + c.monto + '</b><span class="chip ' + e.clase + '">' + e.texto + '</span></div>' +
+    '<div class="numeritos">' +
+      c.numeros.map(function(n){ return '<span class="numerito">' + esc(n) + '</span>'; }).join('') +
+    '</div>';
+
+  if (c.estado === 'PAGADA'){
+    html += '<div class="copiable" style="margin-top:9px"><span>' + esc(c.ticket) + '</span>' +
+            '<button class="btn btn-chico btn-fantasma" onclick="copiar(\'' + esc(c.ticket) +
+            '\')">Copiar</button></div>' +
+            '<div class="mini" style="margin-top:6px">Este es tu comprobante. Participa en el sorteo.</div>';
+  } else if (c.estado === 'POR_VALIDAR'){
+    html += '<div class="mini">Ya recibimos tu comprobante. Tus números están apartados ' +
+            'hasta que el organizador confirme el pago.</div>';
+  } else if (c.estado === 'RESERVADA'){
+    html += '<div class="mini">Todavía no nos llega tu comprobante. Si ya pagaste, ' +
+            'escríbele al organizador con tu código de operación.</div>';
+  } else if (c.estado === 'RECHAZADA'){
+    html += '<div class="mini">' + (c.notas ? esc(c.notas) : 'El organizador no pudo confirmar este pago.') + '</div>';
+  }
+
+  t.innerHTML = html;
+  return t;
+}
+
+// ---------------- Reloj de reserva ----------------
+function textoReloj(){
+  if (!ST.orden) return '00:00';
+  var resta = Math.max(0, ST.orden.expiraEn - Date.now());
+  var m = Math.floor(resta / 60000), s = Math.floor(resta % 60000 / 1000);
+  return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function iniciarReloj(){
+  if (ST.cuenta) clearInterval(ST.cuenta);
+  ST.cuenta = setInterval(function(){
+    if (!ST.orden){ clearInterval(ST.cuenta); ST.cuenta = null; return; }
+    var txt = textoReloj();
+    var a = document.getElementById('reloj');
+    var b = document.getElementById('relojBanner');
+    if (a) a.textContent = txt;
+    if (b) b.textContent = txt;
+    if (ST.paso === 1) document.getElementById('barraSub').textContent = 'Vence en ' + txt;
+
+    if (ST.orden.expiraEn - Date.now() <= 0){
+      clearInterval(ST.cuenta);
+      ST.cuenta = null;
+      ST.orden = null;
+      verPaso(1);
+      refrescarSuave();
+      alert('Tu reserva venció y los números volvieron al tablero. Si ya pagaste, escríbele al organizador con tu código de operación.');
+    }
+  }, 1000);
+}
+
+// ---------------- Utilidades ----------------
+function pintarChips(idContenedor, numeros){
+  var cont = document.getElementById(idContenedor);
+  cont.innerHTML = '';
+  numeros.forEach(function(n){
+    var d = document.createElement('span');
+    d.className = 'numerito';
+    d.textContent = n;
+    cont.appendChild(d);
+  });
+}
+
+function mostrarError(el, msg){
+  el.textContent = msg;
+  el.classList.remove('oculto');
+  el.scrollIntoView({ block:'center', behavior:'smooth' });
+}
+
+function bloquear(si, texto){
+  var b = document.getElementById('barraBtn');
+  b.disabled = si;
+  if (si){ b.dataset.prev = b.textContent; b.textContent = texto; }
+  else if (b.dataset.prev){ b.textContent = b.dataset.prev; delete b.dataset.prev; }
+}
+
+// El almacenamiento del navegador puede estar bloqueado dentro del iframe
+// de Apps Script, así que siempre va con red de seguridad.
+function recordar(k, v){ try { localStorage.setItem('rifa_' + k, v); } catch(e){} }
+function recordado(k){ try { return localStorage.getItem('rifa_' + k) || ''; } catch(e){ return ''; } }
+
+function copiar(txt){
+  if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  else {
+    var i = document.createElement('input');
+    i.value = txt; document.body.appendChild(i); i.select();
+    document.execCommand('copy'); document.body.removeChild(i);
+  }
+  alert('Copiado: ' + txt);
+}
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function fallo(e){
+  document.getElementById('tablero').innerHTML =
+    '<div class="aviso aviso-mal">No pudimos cargar el tablero. Recarga la página. (' + esc(e.message) + ')</div>';
+}
+</script>
+</body>
+</html>

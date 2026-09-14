@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Estilos'); ?>
+</head>
+<body>
+
+<div class="envoltura">
+
+  <!-- ============ LOGIN ============ -->
+  <section id="login">
+    <div class="talon">
+      <div class="talon-cuerpo">
+        <p class="rifa-titulo">Panel del organizador</p>
+        <p class="rifa-sub">Ingresa tu PIN para revisar los pagos. <span class="mini">v5</span></p>
+        <label for="fPin">PIN</label>
+        <input id="fPin" type="text" inputmode="text" enterkeyhint="go"
+               autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"
+               class="oculta-texto" placeholder="Letras y números">
+        <button class="btn btn-chico btn-fantasma" style="margin-top:9px" onclick="verClave(this)">
+          Mostrar PIN
+        </button>
+        <div id="errorPin" class="aviso aviso-mal oculto"></div>
+        <div class="hueco"></div>
+        <button class="btn btn-ancho" onclick="entrar()">Entrar</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PANEL ============ -->
+  <section id="panel" class="oculto">
+
+    <div class="metricas">
+      <div class="metrica">
+        <div class="metrica-valor" id="mRecaudado">S/ 0</div>
+        <div class="metrica-nombre">recaudado y confirmado</div>
+      </div>
+      <div class="metrica">
+        <div class="metrica-valor" id="mUtilidad">S/ 0</div>
+        <div class="metrica-nombre">menos el premio</div>
+      </div>
+      <div class="metrica">
+        <div class="metrica-valor" id="mPagados">0</div>
+        <div class="metrica-nombre">números vendidos</div>
+      </div>
+      <div class="metrica">
+        <div class="metrica-valor" id="mDisponibles">0</div>
+        <div class="metrica-nombre">números libres</div>
+      </div>
+    </div>
+
+    <div class="pestanas">
+      <button class="pestana activa" data-t="validar" onclick="pestana('validar')">Por validar <span id="tagValidar"></span></button>
+      <button class="pestana" data-t="tablero" onclick="pestana('tablero')">Tablero</button>
+      <button class="pestana" data-t="buscar" onclick="pestana('buscar')">Buscar</button>
+      <button class="pestana" data-t="sorteo" onclick="pestana('sorteo')">Sorteo</button>
+    </div>
+
+    <!-- ---- Por validar ---- -->
+    <div id="t-validar">
+      <div id="colaValidar"><div class="cargando">Cargando pagos…</div></div>
+      <div class="hueco"></div>
+      <p class="rifa-titulo">Últimas compras</p>
+      <div id="listaRecientes"></div>
+    </div>
+
+    <!-- ---- Tablero ---- -->
+    <div id="t-tablero" class="oculto">
+      <p class="mini">Toca un número para ver de quién es.</p>
+      <div class="leyenda">
+        <span><i class="i-d"></i>libre</span>
+        <span><i class="i-r"></i>reservado</span>
+        <span><i class="i-p"></i>vendido</span>
+      </div>
+      <div id="tableroAdmin" class="tablero"><div class="cargando">Cargando…</div></div>
+      <button class="btn btn-fantasma btn-ancho btn-chico" onclick="liberar()">Liberar reservas vencidas</button>
+      <div class="hueco"></div>
+      <div id="cajaVentas"></div>
+    </div>
+
+    <!-- ---- Buscar ---- -->
+    <div id="t-buscar" class="oculto">
+      <label for="fBuscar">Nombre, celular, número, referencia o código</label>
+      <input id="fBuscar" type="search" placeholder="Ej. 147 o 987654321" oninput="buscarDebounce()">
+      <div id="resultados"></div>
+    </div>
+
+    <!-- ---- Sorteo ---- -->
+    <div id="t-sorteo" class="oculto">
+      <div id="cajaSorteo"><div class="cargando">Cargando…</div></div>
+    </div>
+
+  </section>
+</div>
+
+<div class="barra oculto" id="barraAdmin">
+  <div class="barra-fila">
+    <div class="barra-info">
+      <div class="barra-titulo" id="barraAdminTitulo">—</div>
+      <div class="barra-sub" id="barraAdminSub">—</div>
+    </div>
+    <button class="btn btn-fantasma btn-chico" onclick="recargar()">Actualizar</button>
+  </div>
+</div>
+
+<script>
+var AD = { token:null, datos:null, timer:null, tab:'validar', porId:{}, fechaSorteo:'' };
+
+// ---------------- Sesión ----------------
+// El PIN va como type="text" a propósito: type="password" hace que varios
+// teclados de Android abran el teclado numérico y no se puedan escribir letras.
+// El enmascarado se hace por CSS (.oculta-texto), no por el tipo de campo.
+function verClave(boton){
+  var i = document.getElementById('fPin');
+  var tapado = i.classList.toggle('oculta-texto');
+  boton.textContent = tapado ? 'Mostrar PIN' : 'Ocultar PIN';
+  i.focus();
+}
+
+function entrar(){
+  var pin = document.getElementById('fPin').value.trim();
+  var err = document.getElementById('errorPin');
+  err.classList.add('oculto');
+  google.script.run
+    .withSuccessHandler(function(r){
+      AD.token = r.token;
+      document.getElementById('login').classList.add('oculto');
+      document.getElementById('panel').classList.remove('oculto');
+      document.getElementById('barraAdmin').classList.remove('oculto');
+      recargar();
+      AD.timer = setInterval(recargar, 45000);
+    })
+    .withFailureHandler(function(e){ err.textContent = e.message; err.classList.remove('oculto'); })
+    .adminLogin(pin);
+}
+
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' && !AD.token) entrar();
+});
+
+function recargar(){
+  google.script.run.withSuccessHandler(pintarPanel).withFailureHandler(caido).adminResumen(AD.token);
+}
+
+function caido(e){
+  if (/sesión/i.test(e.message)){
+    clearInterval(AD.timer);
+    AD.token = null;
+    document.getElementById('panel').classList.add('oculto');
+    document.getElementById('barraAdmin').classList.add('oculto');
+    document.getElementById('login').classList.remove('oculto');
+    var err = document.getElementById('errorPin');
+    err.textContent = e.message; err.classList.remove('oculto');
+  } else {
+    alert(e.message);
+  }
+}
+
+// ---------------- Pintado ----------------
+function pintarPanel(d){
+  AD.datos = d;
+  AD.fechaSorteo = d.fechaSorteo || '';
+  var s = d.stats;
+
+  document.getElementById('mRecaudado').textContent = 'S/ ' + s.recaudado;
+  document.getElementById('mUtilidad').textContent = 'S/ ' + s.utilidad;
+  document.getElementById('mPagados').textContent = s.pagados;
+  document.getElementById('mDisponibles').textContent = s.disponibles;
+  document.getElementById('tagValidar').textContent = s.porValidar ? '(' + s.porValidar + ')' : '';
+  document.getElementById('barraAdminTitulo').textContent =
+    s.porValidar ? s.porValidar + ' pago(s) esperando revisión' : 'Todo al día';
+  document.getElementById('barraAdminSub').textContent =
+    s.pagados + '/' + s.total + ' vendidos · ' + s.ordenesReservadas + ' reserva(s) activa(s)';
+
+  pintarCola(d.porValidar);
+  pintarRecientes(d.recientes);
+  pintarVentas(d.abiertas);
+  pintarSorteo(d.sorteo, d.abiertas);
+}
+
+function pintarCola(lista){
+  var c = document.getElementById('colaValidar');
+  if (!lista.length){
+    c.innerHTML = '<div class="vacio">No hay pagos por revisar. Cuando alguien mande su comprobante, aparece acá.</div>';
+    return;
+  }
+  c.innerHTML = '';
+  lista.forEach(function(o){
+    var t = document.createElement('div');
+    t.className = 'tarjeta urgente';
+    t.innerHTML =
+      '<div class="fila"><b>' + esc(o.nombre) + '</b><span class="chip chip-espera">S/ ' + o.monto + '</span></div>' +
+      '<div class="numeritos">' + o.numeros.map(function(n){ return '<span class="numerito">' + n + '</span>'; }).join('') + '</div>' +
+      '<div class="mini">' + o.celular + ' · ref ' + o.ref + ' · ' + hace(o.creado) + '</div>' +
+      (o.codOp ? '<div class="copiable" style="margin-top:9px"><span>op ' + esc(o.codOp) + '</span></div>' : '<div class="mini" style="margin-top:6px">Sin código de operación</div>') +
+      '<div id="foto-' + o.id + '"></div>' +
+      '<div class="acciones">' +
+        (o.tieneFoto ? '<button class="btn btn-chico btn-fantasma" onclick="verFoto(\'' + o.id + '\')">Ver captura</button>' : '') +
+        '<button class="btn btn-chico btn-peligro" onclick="rechazar(\'' + o.id + '\')">Rechazar</button>' +
+        '<button class="btn btn-chico btn-ok" onclick="aprobar(\'' + o.id + '\')">Confirmar pago</button>' +
+      '</div>';
+    c.appendChild(t);
+  });
+}
+
+function pintarRecientes(lista){
+  var c = document.getElementById('listaRecientes');
+  if (!lista.length){ c.innerHTML = '<div class="vacio">Todavía no hay compras.</div>'; return; }
+  c.innerHTML = '';
+  lista.forEach(function(o){ c.appendChild(tarjetaOrden(o)); });
+}
+
+function tarjetaOrden(o){
+  var t = document.createElement('div');
+  t.className = 'tarjeta';
+  t.innerHTML =
+    '<div class="fila"><b>' + esc(o.nombre) + '</b>' + chip(o.estado) + '</div>' +
+    '<div class="numeritos">' + o.numeros.map(function(n){ return '<span class="numerito">' + n + '</span>'; }).join('') + '</div>' +
+    '<div class="mini">' + o.celular + ' · S/ ' + o.monto + ' · ref ' + o.ref +
+      (o.ticket ? ' · ' + esc(o.ticket) : '') + '</div>' +
+    (o.estado === 'PAGADA' ? '<div class="acciones">' +
+      '<button class="btn btn-chico btn-fantasma" onclick="avisar(\'' + o.id + '\')">Reenviar por WhatsApp</button></div>' : '');
+  AD.porId[o.id] = o;
+  return t;
+}
+
+function pintarVentas(abiertas){
+  var c = document.getElementById('cajaVentas');
+  if (abiertas){
+    c.innerHTML = '<div class="aviso">Las ventas están abiertas. Al cerrarlas se congela la lista de participantes y se publica su huella digital, paso obligatorio antes del sorteo.</div>' +
+      '<button class="btn btn-peligro btn-ancho" onclick="cerrarVentas()">Cerrar ventas</button>';
+  } else {
+    c.innerHTML = '<div class="aviso aviso-ok">Las ventas están cerradas.</div>' +
+      '<button class="btn btn-fantasma btn-ancho" onclick="abrirVentas()">Volver a abrir ventas</button>';
+  }
+}
+
+function pintarSorteo(s, abiertas){
+  var c = document.getElementById('cajaSorteo');
+  s = s || {};
+
+  if (abiertas){
+    c.innerHTML = '<div class="aviso">Primero cierra las ventas desde la pestaña Tablero. Mientras sigan abiertas la lista de participantes puede cambiar.</div>';
+    return;
+  }
+
+  var html = '';
+  if (s.HUELLA_SHA256){
+    html += '<div class="talon"><div class="talon-cuerpo">' +
+      '<p class="rifa-titulo">Lista congelada</p>' +
+      '<p class="rifa-sub">' + s.PARTICIPANTES + ' números participan. Cerrada el ' + esc(s.CIERRE_FECHA) + '.</p>' +
+      '<p class="mini" style="margin-top:10px">Huella SHA-256 de la lista</p>' +
+      '<p class="mono">' + esc(s.HUELLA_SHA256) + '</p>' +
+      '</div><div class="talon-corte"><span class="mini">Publica esta huella antes del sorteo</span>' +
+      '<button class="btn btn-chico btn-fantasma" onclick="copiar(\'' + s.HUELLA_SHA256 + '\')">Copiar</button></div></div>';
+  }
+
+  if (s.NUMERO_GANADOR){
+    html += '<div class="talon"><div class="talon-cuerpo centro">' +
+      '<p class="rifa-titulo">Número ganador</p>' +
+      '<p class="rifa-premio">' + esc(s.NUMERO_GANADOR) + '</p>' +
+      '<p class="rifa-sub">' + esc(s.GANADOR || 'sin dueño registrado') + '</p>' +
+      '</div><div class="talon-corte"><span class="mini">ticket ' + esc(s.GANADOR_TICKET || '—') + '</span>' +
+      '<span class="mini">' + esc(s.SORTEO_FECHA || '') + '</span></div></div>' +
+      '<div class="tarjeta"><p class="mini">Semilla usada</p><p class="mono">' + esc(s.SEMILLA) + '</p>' +
+      '<p class="mini" style="margin-top:8px">Fuente</p><p class="mini">' + esc(s.SEMILLA_FUENTE || '—') + '</p>' +
+      '<p class="mini" style="margin-top:8px">Índice elegido</p><p class="mono">' + esc(s.INDICE) + '</p>' +
+      '<p class="mini" style="margin-top:8px">HMAC-SHA256(semilla, lista)</p><p class="mono">' + esc(s.FIRMA_HMAC) + '</p></div>' +
+      '<button class="btn btn-fantasma btn-ancho btn-chico" onclick="copiar(AD.datos.sorteo.LISTA)">Copiar lista de participantes</button>';
+  } else {
+    html += '<div class="tarjeta">' +
+      '<p class="rifa-titulo">Ejecutar el sorteo</p>' +
+      '<p class="mini">Usa un dato público que aparezca después de cerrar las ventas y que tú no controles. Por ejemplo los números de La Tinka del domingo. Así cualquiera puede recalcular el resultado.</p>' +
+      '<label for="fSemilla">Semilla pública</label>' +
+      '<input id="fSemilla" type="text" placeholder="Ej. 07-12-19-25-31-44">' +
+      '<label for="fFuente">De dónde salió</label>' +
+      '<input id="fFuente" type="text" placeholder="Ej. La Tinka, sorteo del 14/09/2026">' +
+      '<div class="hueco"></div>' +
+      '<button class="btn btn-ancho" onclick="sortear()">Sortear</button>' +
+      '<p class="mini" style="margin-top:10px">El sorteo se ejecuta una sola vez. No se puede repetir.</p>' +
+      '</div>';
+  }
+  c.innerHTML = html;
+}
+
+// ---------------- Acciones ----------------
+function aprobar(id){
+  if (!confirm('¿Confirmas que el pago llegó a tu Yape?')) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      recargar();
+      if (r.whatsapp && confirm('Ticket ' + r.ticket + ' generado.' +
+          (r.correoEnviado ? ' Ya le llegó por correo.' : '') + '\n\n¿Le avisas por WhatsApp?')){
+        window.open(r.whatsapp, '_blank');
+      }
+    })
+    .withFailureHandler(caido)
+    .adminAprobar(AD.token, id);
+}
+
+function rechazar(id){
+  var m = prompt('¿Por qué lo rechazas? (queda registrado y los números vuelven al tablero)');
+  if (m === null) return;
+  google.script.run.withSuccessHandler(recargar).withFailureHandler(caido)
+    .adminRechazar(AD.token, id, m);
+}
+
+function verFoto(id){
+  var cont = document.getElementById('foto-' + id);
+  if (cont.dataset.cargada){ cont.innerHTML = ''; delete cont.dataset.cargada; return; }
+  cont.innerHTML = '<p class="mini">Cargando captura…</p>';
+  google.script.run
+    .withSuccessHandler(function(url){
+      cont.innerHTML = url ? '<img class="captura" src="' + url + '" alt="Captura del pago">'
+                           : '<p class="mini">No subió captura.</p>';
+      cont.dataset.cargada = '1';
+    })
+    .withFailureHandler(function(e){ cont.innerHTML = '<p class="mini">' + e.message + '</p>'; })
+    .adminComprobante(AD.token, id);
+}
+
+function liberar(){
+  google.script.run
+    .withSuccessHandler(function(r){ alert(r.liberadas + ' reserva(s) liberada(s).'); recargar(); cargarTablero(); })
+    .withFailureHandler(caido).adminLiberarExpiradas(AD.token);
+}
+
+function cerrarVentas(){
+  if (!confirm('Se cierran las ventas y se congela la lista de participantes. ¿Continuar?')) return;
+  google.script.run.withSuccessHandler(function(){ recargar(); pestana('sorteo'); })
+    .withFailureHandler(caido).adminVentas(AD.token, false);
+}
+
+function abrirVentas(){
+  google.script.run.withSuccessHandler(recargar).withFailureHandler(caido).adminVentas(AD.token, true);
+}
+
+function sortear(){
+  var sem = document.getElementById('fSemilla').value.trim();
+  var fue = document.getElementById('fFuente').value.trim();
+  if (sem.length < 3) return alert('Ingresa la semilla pública.');
+  if (!confirm('El sorteo se ejecuta una sola vez y queda registrado. ¿Continuar?')) return;
+  google.script.run
+    .withSuccessHandler(function(s){ pintarSorteo(s, false); alert('Número ganador: ' + s.NUMERO_GANADOR); })
+    .withFailureHandler(caido).adminSortear(AD.token, sem, fue);
+}
+
+function avisar(id){
+  var o = AD.porId[id];
+  if (!o) return;
+  var txt = 'Hola ' + o.nombre.split(' ')[0] + ', tu pago está confirmado.' +
+            '\nNúmeros: ' + o.numeros.join(', ') +
+            '\nTicket: ' + o.ticket +
+            (AD.fechaSorteo ? '\nSorteo: ' + AD.fechaSorteo : '');
+  window.open('https://wa.me/51' + o.celular + '?text=' + encodeURIComponent(txt), '_blank');
+}
+
+// ---------------- Tablero admin ----------------
+function cargarTablero(){
+  google.script.run.withSuccessHandler(function(lista){
+    var c = document.getElementById('tableroAdmin');
+    c.innerHTML = '';
+    var frag = document.createDocumentFragment();
+    lista.forEach(function(o){
+      var b = document.createElement('button');
+      var clase = o.estado === 'PAGADO' ? 'p' : (o.estado === 'RESERVADO' ? 'r' : (o.estado === 'ANULADO' ? 'x' : 'd'));
+      b.className = 'num ' + clase;
+      b.type = 'button';
+      b.textContent = o.n;
+      b.onclick = function(){
+        alert(o.dueno
+          ? o.n + ' · ' + o.estado + '\n' + o.dueno + '\n' + o.celular + '\nref ' + o.ref
+          : o.n + ' · ' + o.estado);
+      };
+      frag.appendChild(b);
+    });
+    c.appendChild(frag);
+  }).withFailureHandler(caido).adminNumeros(AD.token);
+}
+
+// ---------------- Buscar ----------------
+var timerBuscar = null;
+function buscarDebounce(){
+  clearTimeout(timerBuscar);
+  timerBuscar = setTimeout(buscar, 400);
+}
+function buscar(){
+  var q = document.getElementById('fBuscar').value.trim();
+  var c = document.getElementById('resultados');
+  if (q.length < 2){ c.innerHTML = ''; return; }
+  c.innerHTML = '<div class="cargando">Buscando…</div>';
+  google.script.run.withSuccessHandler(function(lista){
+    if (!lista.length){ c.innerHTML = '<div class="vacio">Nada coincide con esa búsqueda.</div>'; return; }
+    c.innerHTML = '';
+    lista.forEach(function(o){ c.appendChild(tarjetaOrden(o)); });
+  }).withFailureHandler(caido).adminBuscar(AD.token, q);
+}
+
+// ---------------- Pestañas ----------------
+function pestana(t){
+  AD.tab = t;
+  ['validar','tablero','buscar','sorteo'].forEach(function(x){
+    document.getElementById('t-' + x).classList.toggle('oculto', x !== t);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.pestana'), function(b){
+    b.classList.toggle('activa', b.dataset.t === t);
+  });
+  if (t === 'tablero') cargarTablero();
+  window.scrollTo(0, 0);
+}
+
+// ---------------- Utilidades ----------------
+function chip(estado){
+  var m = { PAGADA:'chip-ok', POR_VALIDAR:'chip-espera', RESERVADA:'chip-espera', RECHAZADA:'chip-mal', EXPIRADA:'chip' };
+  var txt = { PAGADA:'pagada', POR_VALIDAR:'por validar', RESERVADA:'reservada', RECHAZADA:'rechazada', EXPIRADA:'vencida' };
+  return '<span class="chip ' + (m[estado] || '') + '">' + (txt[estado] || estado.toLowerCase()) + '</span>';
+}
+
+function hace(ts){
+  if (!ts) return '';
+  var m = Math.floor((Date.now() - ts) / 60000);
+  if (m < 1) return 'ahorita';
+  if (m < 60) return 'hace ' + m + ' min';
+  var h = Math.floor(m / 60);
+  if (h < 24) return 'hace ' + h + ' h';
+  return 'hace ' + Math.floor(h / 24) + ' d';
+}
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function copiar(txt){
+  if (navigator.clipboard) navigator.clipboard.writeText(txt);
+  alert('Copiado');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <?!= include('Estilos'); ?>
+</head>
+<body style="padding-bottom:28px">
+
+<div class="envoltura">
+  <div id="contenido"><div class="cargando">Verificando el ticket…</div></div>
+
+  <div id="buscador" class="oculto">
+    <label for="fCodigo">Código del ticket</label>
+    <input id="fCodigo" type="text" placeholder="RIFA-147-X8K2">
+    <div class="hueco"></div>
+    <button class="btn btn-ancho" onclick="verificar()">Verificar</button>
+  </div>
+</div>
+
+<script>
+var CODIGO = <?!= JSON.stringify(codigo) ?>;
+var BASE = <?!= JSON.stringify(baseUrl) ?>;
+
+document.addEventListener('DOMContentLoaded', function(){
+  if (CODIGO) consultar(CODIGO);
+  else {
+    document.getElementById('contenido').innerHTML =
+      '<div class="talon"><div class="talon-cuerpo"><p class="rifa-titulo">Verificar un ticket</p>' +
+      '<p class="rifa-sub">Ingresa el código que recibiste para comprobar que tu número está pagado.</p></div></div>';
+    document.getElementById('buscador').classList.remove('oculto');
+  }
+});
+
+function verificar(){
+  var c = document.getElementById('fCodigo').value.trim();
+  if (!c) return;
+  document.getElementById('buscador').classList.add('oculto');
+  document.getElementById('contenido').innerHTML = '<div class="cargando">Verificando…</div>';
+  consultar(c);
+}
+
+function consultar(c){
+  google.script.run.withSuccessHandler(pintar).withFailureHandler(function(e){
+    document.getElementById('contenido').innerHTML =
+      '<div class="aviso aviso-mal">' + esc(e.message) + '</div>';
+  }).apiTicket(c);
+}
+
+function pintar(t){
+  var c = document.getElementById('contenido');
+
+  if (!t || t.noExiste){
+    c.innerHTML = '<div class="talon"><div class="talon-cuerpo centro">' +
+      '<p class="rifa-titulo">Ticket no encontrado</p>' +
+      '<p class="rifa-sub">Ese código no existe en esta rifa. Revísalo o escríbele al organizador.</p>' +
+      '</div></div>';
+    document.getElementById('buscador').classList.remove('oculto');
+    return;
+  }
+
+  var qr = 'https://quickchart.io/qr?size=200&margin=1&text=' + encodeURIComponent(t.codigo);
+
+  c.innerHTML =
+    '<div class="talon">' +
+      '<div class="talon-cuerpo">' +
+        '<p class="rifa-titulo">' + esc(t.rifa) + '</p>' +
+        '<p class="rifa-sub">Premio S/ ' + t.premio + '</p>' +
+        '<div class="numeritos" style="margin-top:14px">' +
+          t.numeros.map(function(n){ return '<span class="numerito" style="font-size:1.3rem;padding:8px 14px">' + esc(n) + '</span>'; }).join('') +
+        '</div>' +
+        '<p class="dato" style="margin-top:12px">A nombre de <b>' + esc(t.nombre) + '</b></p>' +
+        '<p class="dato">Pagado <b>S/ ' + t.monto + '</b>' + (t.fecha ? ' el ' + esc(t.fecha) : '') + '</p>' +
+        '<div class="hueco"></div>' +
+        (t.valido
+          ? '<span class="chip chip-ok">pago confirmado</span>'
+          : '<span class="chip chip-espera">' + esc(String(t.estado).toLowerCase().replace(/_/g, ' ')) + '</span>') +
+      '</div>' +
+      '<div class="talon-corte">' +
+        '<div><p class="mini">Código del ticket</p><p class="mono" style="font-size:.95rem"><b>' + esc(t.codigo) + '</b></p></div>' +
+        '<img src="' + qr + '" alt="Código QR del ticket" width="90" height="90" style="border-radius:6px">' +
+      '</div>' +
+    '</div>' +
+    (t.valido
+      ? '<p class="mini">Este ticket participa en el sorteo. Guarda el código.</p>'
+      : '<div class="aviso">Este ticket todavía no tiene el pago confirmado, así que aún no participa en el sorteo.</div>');
+}
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
