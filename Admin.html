@@ -95,6 +95,17 @@
   </section>
 </div>
 
+<div id="modalFoto" class="modal oculto" role="dialog" aria-modal="true" aria-labelledby="modalFotoTitulo" onclick="cerrarFoto(event)">
+  <div class="modal-caja" onclick="event.stopPropagation()">
+    <div class="modal-cabecera">
+      <div><b id="modalFotoTitulo">Comprobante de pago</b><div class="mini" id="modalFotoInfo"></div></div>
+      <button class="btn btn-chico btn-fantasma" onclick="cerrarFoto()" aria-label="Cerrar comprobante">Cerrar</button>
+    </div>
+    <div class="modal-cuerpo" id="modalFotoCuerpo"><div class="cargando">Cargando captura…</div></div>
+    <div class="modal-pie" id="modalFotoPie"></div>
+  </div>
+</div>
+
 <div class="barra oculto" id="barraAdmin">
   <div class="barra-fila">
     <div class="barra-info">
@@ -188,6 +199,7 @@ function pintarCola(lista){
   }
   c.innerHTML = '';
   lista.forEach(function(o){
+    AD.porId[o.id] = o;
     var t = document.createElement('div');
     t.className = 'tarjeta urgente';
     t.innerHTML =
@@ -218,10 +230,14 @@ function tarjetaOrden(o){
   t.innerHTML =
     '<div class="fila"><b>' + esc(o.nombre) + '</b>' + chip(o.estado) + '</div>' +
     '<div class="numeritos">' + o.numeros.map(function(n){ return '<span class="numerito">' + n + '</span>'; }).join('') + '</div>' +
-    '<div class="mini">' + o.celular + ' · S/ ' + o.monto + ' · ref ' + o.ref +
-      (o.ticket ? ' · ' + esc(o.ticket) : '') + '</div>' +
-    (o.estado === 'PAGADA' ? '<div class="acciones">' +
-      '<button class="btn btn-chico btn-fantasma" onclick="avisar(\'' + o.id + '\')">Reenviar por WhatsApp</button></div>' : '');
+    '<div class="ficha-admin"><span class="mini">Celular</span><b>' + esc(o.celular) + '</b>' +
+    '<span class="mini">Monto · ref</span><b>S/ ' + o.monto + ' · ' + esc(o.ref) + '</b>' +
+    (o.codOp ? '<span class="mini">Operación</span><b>' + esc(o.codOp) + '</b>' : '') +
+    (o.ticket ? '<span class="mini">Ticket</span><b>' + esc(o.ticket) + '</b>' : '') + '</div>' +
+    '<div class="accion-secundaria">' +
+      (o.tieneFoto ? '<button class="btn btn-chico btn-fantasma" onclick="verFoto(\'' + o.id + '\')">Ver comprobante</button>' : '') +
+      (o.estado === 'PAGADA' ? '<button class="btn btn-chico btn-fantasma" onclick="avisar(\'' + o.id + '\')">WhatsApp</button>' : '') +
+    '</div>';
   AD.porId[o.id] = o;
   return t;
 }
@@ -308,18 +324,29 @@ function rechazar(id){
 }
 
 function verFoto(id){
-  var cont = document.getElementById('foto-' + id);
-  if (cont.dataset.cargada){ cont.innerHTML = ''; delete cont.dataset.cargada; return; }
-  cont.innerHTML = '<p class="mini">Cargando captura…</p>';
+  var o = AD.porId[id] || {};
+  var modal = document.getElementById('modalFoto');
+  document.getElementById('modalFotoTitulo').textContent = 'Comprobante de ' + (o.nombre || 'pago');
+  document.getElementById('modalFotoInfo').textContent = (o.celular || '') + (o.monto ? ' · S/ ' + o.monto : '') + (o.codOp ? ' · op ' + o.codOp : '');
+  document.getElementById('modalFotoCuerpo').innerHTML = '<div class="cargando">Cargando captura…</div>';
+  document.getElementById('modalFotoPie').innerHTML = '';
+  modal.classList.remove('oculto');
   google.script.run
     .withSuccessHandler(function(url){
-      cont.innerHTML = url ? '<img class="captura" src="' + url + '" alt="Captura del pago">'
-                           : '<p class="mini">No subió captura.</p>';
-      cont.dataset.cargada = '1';
+      document.getElementById('modalFotoCuerpo').innerHTML = url ? '<img src="' + url + '" alt="Captura del pago de ' + esc(o.nombre || '') + '">' : '<p class="mini">No subió captura.</p>';
+      document.getElementById('modalFotoPie').innerHTML = url ? '<a class="btn btn-chico btn-fantasma" href="' + url + '" download="comprobante-' + esc(o.ref || 'pago') + '.jpg">Descargar</a>' : '';
     })
-    .withFailureHandler(function(e){ cont.innerHTML = '<p class="mini">' + e.message + '</p>'; })
+    .withFailureHandler(function(e){ document.getElementById('modalFotoCuerpo').innerHTML = '<p class="aviso aviso-mal">' + esc(e.message) + '</p>'; })
     .adminComprobante(AD.token, id);
 }
+
+function cerrarFoto(event){
+  if (event && event.target !== document.getElementById('modalFoto')) return;
+  document.getElementById('modalFoto').classList.add('oculto');
+  document.getElementById('modalFotoCuerpo').innerHTML = '';
+}
+
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') cerrarFoto(); });
 
 function liberar(){
   google.script.run

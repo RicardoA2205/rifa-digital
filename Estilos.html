@@ -4,13 +4,13 @@
 
 <style>
 :root{
-  --papel:#e8e9e3;
-  --papel-alto:#f3f4f0;
-  --tinta:#1b2430;
-  --suave:#5b6677;
-  --linea:#c8cbc2;
-  --azul:#123b63;
-  --azul-claro:#e3ebf3;
+  --papel:#eef1ee;
+  --papel-alto:#ffffff;
+  --tinta:#14222e;
+  --suave:#5d6874;
+  --linea:#d6dcd8;
+  --azul:#0b4b74;
+  --azul-claro:#e8f2f8;
   --verde:#2f7d4f;
   --ambar:#b5830c;
   --rojo:#a3352c;
@@ -23,7 +23,7 @@ html,body{margin:0;padding:0}
 
 body{
   font-family:'Archivo',system-ui,-apple-system,sans-serif;
-  background:var(--papel);
+  background:linear-gradient(180deg,#f7f9f7 0, var(--papel) 420px);
   color:var(--tinta);
   font-size:16px;
   line-height:1.5;
@@ -31,7 +31,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 
-.envoltura{max-width:640px;margin:0 auto;padding:0 14px}
+.envoltura{max-width:640px;margin:0 auto;padding:0 16px}
 
 /* ---------- Talón de ticket (el motivo visual de todo el sistema) ---------- */
 .talon{
@@ -41,7 +41,7 @@ body{
   margin:14px 0;
   overflow:hidden;
 }
-.talon-cuerpo{padding:16px 18px}
+.talon-cuerpo{padding:19px 20px}
 .talon-corte{
   border-top:2px dashed var(--linea);
   padding:12px 18px;
@@ -51,8 +51,8 @@ body{
   gap:12px;
 }
 
-.rifa-titulo{font-size:1.05rem;font-weight:600;margin:0}
-.rifa-premio{font-size:2.5rem;font-weight:700;letter-spacing:-1.5px;margin:2px 0 0;line-height:1}
+.rifa-titulo{font-size:1.08rem;font-weight:700;margin:0}
+.rifa-premio{font-size:2.7rem;font-weight:700;letter-spacing:-1.8px;margin:4px 0 0;line-height:1}
 .rifa-sub{color:var(--suave);font-size:.86rem;margin:6px 0 0}
 
 .dato{font-size:.86rem;color:var(--suave)}
@@ -83,8 +83,8 @@ body{
   font-size:1rem;
   font-weight:600;
   font-variant-numeric:tabular-nums;
-  min-height:48px;
-  border-radius:8px;
+  min-height:52px;
+  border-radius:10px;
   cursor:pointer;
   display:flex;
   align-items:center;
@@ -115,7 +115,7 @@ body{
 /* ---------- Botones ---------- */
 .btn{
   appearance:none;border:none;font-family:inherit;font-size:.98rem;font-weight:600;
-  background:var(--azul);color:#fff;padding:13px 20px;border-radius:9px;
+  background:var(--azul);color:#fff;padding:13px 20px;border-radius:10px;
   cursor:pointer;min-height:48px;white-space:nowrap;
 }
 .btn:disabled{background:var(--linea);color:var(--suave);cursor:not-allowed}
@@ -167,7 +167,8 @@ input[type=file]{padding:9px;background:transparent}
 /* ---------- Tarjetas del panel ---------- */
 .tarjeta{
   background:var(--papel-alto);border:1.5px solid var(--linea);
-  border-radius:var(--radio);padding:14px;margin-bottom:11px;
+  border-radius:12px;padding:15px;margin-bottom:12px;
+  box-shadow:0 1px 0 rgba(20,34,46,.03);
 }
 .tarjeta.urgente{border-color:var(--ambar);border-left-width:5px}
 .fila{display:flex;justify-content:space-between;align-items:center;gap:10px}
@@ -217,4 +218,11 @@ a{color:var(--azul)}
 @media (prefers-reduced-motion:reduce){
   *{transition:none !important;animation:none !important}
 }
+/* Compra y comprobantes */
+.paso-etiqueta{display:inline-flex;align-items:center;gap:6px;color:var(--azul);font-size:.73rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:7px}.paso-etiqueta::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--verde)}
+.resumen-pago{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin:15px 0 4px}.resumen-pago .numeritos{margin:0;flex:1}.subrayado{border-bottom:1px solid var(--linea);padding-bottom:13px;margin-bottom:13px}
+.carga-foto{display:block;border:2px dashed #9ab7c9;border-radius:12px;background:#f6fbfe;padding:15px;margin-top:6px;cursor:pointer;text-align:center}.carga-foto input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.carga-icono{display:block;font-size:1.45rem;line-height:1;margin-bottom:6px}.carga-titulo{display:block;font-weight:700;color:var(--azul);font-size:.94rem}.carga-ayuda{display:block;color:var(--suave);font-size:.78rem;margin-top:3px}.estado-imagen{display:flex;align-items:center;gap:7px;margin-top:9px}.estado-imagen::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ambar);flex:none}.estado-imagen.lista::before{background:var(--verde)}.confirmacion{border-color:#a8cbb4;background:#f6fbf7}
+.ficha-admin{display:grid;grid-template-columns:1fr auto;gap:8px 14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--linea)}.ficha-admin b{font-variant-numeric:tabular-nums}.accion-secundaria{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.modal{position:fixed;inset:0;z-index:100;background:rgba(10,20,30,.72);padding:16px;display:flex;align-items:center;justify-content:center}.modal-caja{width:min(680px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--papel-alto);border-radius:14px;box-shadow:0 24px 72px rgba(0,0,0,.36)}.modal-cabecera{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;background:var(--papel-alto);border-bottom:1px solid var(--linea)}.modal-cuerpo{padding:15px}.modal-cuerpo img{display:block;width:100%;height:auto;border-radius:9px;border:1px solid var(--linea);background:#f0f2f1}.modal-pie{display:flex;gap:8px;padding:0 15px 15px}
+@media (max-width:420px){.envoltura{padding:0 12px}.tablero{grid-template-columns:repeat(auto-fill,minmax(51px,1fr));gap:6px}.num{min-height:48px}.talon-cuerpo{padding:16px}.talon-corte{padding:11px 16px}}
 </style>

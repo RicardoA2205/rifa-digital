@@ -13,6 +13,7 @@
   <section id="paso-tablero">
     <div class="talon">
       <div class="talon-cuerpo">
+        <span class="paso-etiqueta">Rifa digital</span>
         <p class="rifa-titulo" id="rifaNombre">Cargando</p>
         <p class="rifa-premio" id="rifaPremio">S/ —</p>
         <p class="rifa-sub">Elige tu número, paga con Yape y recibe tu ticket.</p>
@@ -51,6 +52,7 @@
   <section id="paso-datos" class="oculto">
     <div class="talon">
       <div class="talon-cuerpo">
+        <span class="paso-etiqueta">Paso 1 de 2</span>
         <p class="rifa-titulo">Tus números</p>
         <div class="numeritos" id="resumenNumeros"></div>
       </div>
@@ -75,13 +77,15 @@
 
   <!-- ============ PASO 3: PAGO ============ -->
   <section id="paso-pago" class="oculto">
-    <div class="aviso">
-      Tus números están reservados <span class="reloj" id="reloj">00:00</span>. Paga y manda tu comprobante antes de que se venza.
+    <div class="aviso confirmacion">
+      <b>Reserva activa · <span class="reloj" id="reloj">00:00</span></b><br>
+      Paga el monto exacto y envía tu comprobante antes de que venza.
     </div>
 
-    <div class="numeritos" id="pagoNumeros"></div>
-
-    <p class="mini">Sorteo: <b id="sorteoPago">—</b></p>
+    <div class="resumen-pago subrayado">
+      <div><div class="mini">Tus números</div><div class="numeritos" id="pagoNumeros"></div></div>
+      <div class="mini" style="text-align:right">Sorteo<br><b id="sorteoPago">—</b></div>
+    </div>
 
     <div class="tarjeta">
       <div class="fila">
@@ -115,8 +119,13 @@
     <input id="fCodOp" type="text" inputmode="numeric" placeholder="Ej. 09873421">
 
     <label for="fFoto">Captura del Yape</label>
-    <input id="fFoto" type="file" accept="image/*">
-    <p class="mini" id="estadoFoto">Puedes elegirla de tu galería o tomarle foto.</p>
+    <label class="carga-foto" for="fFoto">
+      <span class="carga-icono">▣</span>
+      <span class="carga-titulo">Tomar o elegir una captura</span>
+      <span class="carga-ayuda">La reducimos automáticamente para enviarla rápido.</span>
+      <input id="fFoto" type="file" accept="image/*" capture="environment">
+    </label>
+    <p class="mini estado-imagen" id="estadoFoto">Aún no elegiste una imagen.</p>
     <img id="previaFoto" class="captura oculto" alt="Vista previa de tu captura">
 
     <div id="errorPago" class="aviso aviso-mal oculto"></div>
@@ -126,6 +135,7 @@
   <section id="paso-listo" class="oculto">
     <div class="talon">
       <div class="talon-cuerpo">
+        <span class="paso-etiqueta">Solicitud enviada</span>
         <p class="rifa-titulo">Comprobante recibido</p>
         <p class="rifa-sub">Estamos revisando tu pago. Cuando lo confirmemos te llega tu ticket por WhatsApp o correo.</p>
         <div class="numeritos" id="listoNumeros"></div>
@@ -502,22 +512,22 @@ document.addEventListener('change', function(ev){
 
   if (!f){
     ST.foto = null;
-    est.textContent = 'Puedes elegirla de tu galería o tomarle foto.';
+    est.textContent = 'Aún no elegiste una imagen.'; est.classList.remove('lista');
     previa.classList.add('oculto');
     return;
   }
 
-  est.textContent = 'Preparando la imagen…';
+  est.textContent = 'Preparando la imagen…'; est.classList.remove('lista');
   previa.classList.add('oculto');
 
   comprimir(f, function(dataUrl){
     ST.foto = dataUrl;
-    est.textContent = 'Imagen lista.';
+    est.textContent = 'Imagen lista.'; est.classList.add('lista');
     previa.src = dataUrl;
     previa.classList.remove('oculto');
   }, function(){
     ST.foto = null;
-    est.textContent = 'No pudimos leer esa imagen. Prueba con otra.';
+    est.textContent = 'No pudimos leer esa imagen. Prueba con otra.'; est.classList.remove('lista');
     previa.classList.add('oculto');
   });
 });
@@ -578,7 +588,7 @@ function limpiarComprobante(){
   ST.foto = null;
   document.getElementById('fCodOp').value = '';
   document.getElementById('fFoto').value = '';
-  document.getElementById('estadoFoto').textContent = 'Puedes elegirla de tu galería o tomarle foto.';
+  document.getElementById('estadoFoto').textContent = 'Aún no elegiste una imagen.'; document.getElementById('estadoFoto').classList.remove('lista');
   var previa = document.getElementById('previaFoto');
   previa.classList.add('oculto');
   previa.removeAttribute('src');
